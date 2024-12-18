@@ -24,6 +24,9 @@ extern float deltat, sum;
 extern uint32_t lastUpdate, firstUpdate;         
 extern uint32_t Now;
 
+// Tilt compensation variables
+float Xm, Ym;
+
 // Output variables
 extern float roll, pitch, yaw;
 
@@ -85,6 +88,14 @@ void loop()
   yaw   = atan2(2.0f * (q[1] * q[2] + q[0] * q[3]), q[0] * q[0] + q[1] * q[1] - q[2] * q[2] - q[3] * q[3]);   
   pitch = -asin(2.0f * (q[1] * q[3] - q[0] * q[2]));
   roll  = atan2(2.0f * (q[0] * q[1] + q[2] * q[3]), q[0] * q[0] - q[1] * q[1] - q[2] * q[2] + q[3] * q[3]);
+
+  // Tilt compensation
+  Xm = mx*cos(pitch) - my*sin(roll)*sin(pitch) + mz*cos(roll)*sin(pitch);
+  Ym = my*cos(roll) + mz*sin(roll);
+
+  yaw = atan2(Ym,Xm);
+  //
+
   pitch *= 180.0f / PI;
   yaw   *= 180.0f / PI; 
   yaw   -= 2.96f; // Declination at Aachen
@@ -92,9 +103,6 @@ void loop()
   // Convert yaw to normal compass degrees   
   if (yaw < 0) yaw += 360.0;
   if (yaw >= 360.0) yaw -= 360.0;
-
-
-  // Tilt compensation below this!
 
   Serial.print("Yaw, Pitch, Roll: ");
   Serial.print(yaw, 2);
