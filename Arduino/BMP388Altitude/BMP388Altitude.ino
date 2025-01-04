@@ -1,48 +1,53 @@
-#include "DFRobot_BMP388.h"
-#include "DFRobot_BMP388_I2C.h"
-#include "Wire.h"
-#include "SPI.h"
-#include "math.h"
-#include "bmp3_defs.h"
+#include <Wire.h>
+#include <SPI.h>
+#include <Adafruit_Sensor.h>
+#include "Adafruit_BMP3XX.h"
 
-/*If there is no need to calibrate altitude, comment this line*/
-//#define CALIBRATE_Altitude
+#define BMP_SCK 13
+#define BMP_MISO 12
+#define BMP_MOSI 11
+#define BMP_CS 10
 
-DFRobot_BMP388_I2C bmp388;
+#define SEALEVELPRESSURE_HPA (1013.25)
 
-float seaLevel;
+Adafruit_BMP3XX bmp;
 
-void setup(){
-
+void setup() {
   Serial.begin(115200);
+  while (!Serial);
+  Serial.println("Adafruit BMP388 / BMP390 test");
 
-  bmp388.set_iic_addr(BMP3_I2C_ADDR_PRIM);
-  /* Initialize bmp388*/
-  while(bmp388.begin()){
-    Serial.println("Initialize error!");
-    delay(1000);
+  if (!bmp.begin_I2C(0X76)) {   // hardware I2C mode, can pass in address & alt Wire
+  //if (! bmp.begin_SPI(BMP_CS)) {  // hardware SPI mode  
+  //if (! bmp.begin_SPI(BMP_CS, BMP_SCK, BMP_MISO, BMP_MOSI)) {  // software SPI mode
+    Serial.println("Could not find a valid BMP3 sensor, check wiring!");
+    while (1);
   }
 
-  delay(100);
-  seaLevel = bmp388.readSeaLevel(525.0);
-  Serial.print("seaLevel : ");
-  Serial.print(seaLevel);
-  Serial.println(" Pa");
+  // Set up oversampling and filter initialization
+  bmp.setTemperatureOversampling(BMP3_OVERSAMPLING_8X);
+  bmp.setPressureOversampling(BMP3_OVERSAMPLING_4X);
+  bmp.setIIRFilterCoeff(BMP3_IIR_FILTER_COEFF_3);
+  bmp.setOutputDataRate(BMP3_ODR_50_HZ);
 }
 
-void loop(){
-  #ifdef CALIBRATE_Altitude
-  /* Read the calibrated altitude */
-  float altitude = bmp388.readCalibratedAltitude(seaLevel);
-  Serial.print("calibrate Altitude : ");
-  Serial.print(altitude);
+void loop() {
+  if (! bmp.performReading()) {
+    Serial.println("Failed to perform reading :(");
+    return;
+  }
+  Serial.print("Temperature = ");
+  Serial.print(bmp.temperature);
+  Serial.println(" *C");
+
+  Serial.print("Pressure = ");
+  Serial.print(bmp.pressure / 100.0);
+  Serial.println(" hPa");
+
+  Serial.print("Approx. Altitude = ");
+  Serial.print(bmp.readAltitude(SEALEVELPRESSURE_HPA));
   Serial.println(" m");
-  #else
-  /* Read the altitude */
-  float altitude = bmp388.readAltitude();
-  Serial.print("Altitude : ");
-  Serial.print(altitude);
-  Serial.println(" m");
-  #endif
-  delay(100);
+
+  Serial.println();
+  delay(2000);
 }
