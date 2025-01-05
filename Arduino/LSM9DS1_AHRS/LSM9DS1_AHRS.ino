@@ -49,6 +49,7 @@ const double fc = 19;
 const double fs = 119.00;
 const double fn = fc / (fs/2);
 uint16_t steps = 0;
+bool step = false;
 
 // Variables for step counting
 float Accz;               // Filtered z axis acceleration
@@ -92,6 +93,8 @@ void setup()
 
 void loop()
 {
+  step = false;
+
     if (readByte(LSM9DS1XG_ADDRESS, LSM9DS1XG_STATUS_REG) & 0x01) {  // check if new accel data is ready  
     readAccelData(accelCount);  // Read the x/y/z adc values
 
@@ -135,14 +138,6 @@ void loop()
   pitch = -asin(2.0f * (q[1] * q[3] - q[0] * q[2]));
   roll  = atan2(2.0f * (q[0] * q[1] + q[2] * q[3]), q[0] * q[0] - q[1] * q[1] - q[2] * q[2] + q[3] * q[3]);
 
-  // Tilt compensation
-  /*
-  Xm = mx*cos(pitch) - my*sin(roll)*sin(pitch) + mz*cos(roll)*sin(pitch);
-  Ym = my*cos(roll) + mz*sin(roll);
-
-  yaw = atan2(Ym,Xm);
-  */
-
   pitch *= 180.0f / PI;
   yaw   *= 180.0f / PI; 
   yaw   -= 2.96f; // Declination at Aachen
@@ -185,6 +180,7 @@ void loop()
       
       if(! isnan(CalculateStepLength(&local_maxima, &local_minima)))
       {
+        step = true;
         distance += CalculateStepLength(&local_maxima, &local_minima);
         steplength = CalculateStepLength(&local_maxima, &local_minima);
       }
@@ -200,6 +196,7 @@ void loop()
 
   /* ============================================ PRINTING OUTPUTS TO SERIAL ====================================== */ 
   
+  Serial.print(step); Serial.print(", ");
   Serial.print(yaw); Serial.print(", ");
   Serial.print(steplength); Serial.print(", ");
   Serial.println(altitude);
