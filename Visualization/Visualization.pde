@@ -45,11 +45,16 @@ int Floor2 = 305;
 int altitude = 0;
 
 // Real World parameters
-float Up = 350;
+float UpAngle = 350;
+float []Ranges = new float[8];
 
 void setup() {
   size(1400, 1000);
   img = loadImage("Helmholtz_FloorPlan.png");  
+  
+  float[] YawAngles = generateYawAngles(UpAngle);
+  float[] YawRanges = {YawAngles[15], YawAngles[1], YawAngles[3], YawAngles[5], YawAngles[7], YawAngles[9], YawAngles[11], YawAngles[13]};  
+  Ranges = YawRanges;
   
   myPort = new Serial(this, "COM5", 9600);
   myPort.bufferUntil('\n');
@@ -75,7 +80,7 @@ void draw() {
     rect(startX, startY, cellSize, cellSize);
   }
   
-  nextStepDirection(yaw);
+  nextStepDirection(yaw, Ranges);
   
   if(type != lastType)
   {
@@ -109,7 +114,7 @@ void draw() {
   fill(255, 50, 50, 150);
   rect(currentX, currentY, cellSize, cellSize);
   
-  StairsHandler(currentFloor); 
+  StairsHandler(); 
   
   currentFloor = FloorHandler(altitude);
   
@@ -140,6 +145,8 @@ void drawNextFrame(int squaresMoved)
 
 
 
+/*
+
 // Testbench / Debug mode
 void keyPressed() {
   if(keyCode == UP)
@@ -159,4 +166,4 @@ void keyPressed() {
     altitude -= 10;
   }
   
-} 
+} */

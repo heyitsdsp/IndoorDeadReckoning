@@ -169,44 +169,44 @@ void mouseClicked()
 /* The following function finds out the direction of the next step on the basis of yaw
    1. nextStepDirection(float yaw) */
 
-void nextStepDirection(float yaw) {
-  if ((yaw >= Up-22.5 && yaw < 360) || (yaw >= 0 && yaw < 22.5-360+Up)) {
+void nextStepDirection(float yaw, float[] YawRanges) {
+  if ((yaw >= YawRanges[0] && yaw < 360) || (yaw >= 0 && yaw < YawRanges[1])) {
     // Move Up (North)
     type = 2;
     nextX = ((currentX / cellSize)) * cellSize;
     nextY = ((currentY / cellSize) - 1) * cellSize;
-  } else if (yaw >= 22.5-360+Up && yaw < 67.5 - 360+Up) {
+  } else if (yaw >= YawRanges[1] && yaw < YawRanges[2]) {
     // Move Up-Right (North-East)
     type = 3;
     nextX = ((currentX / cellSize) + 1) * cellSize;
     nextY = ((currentY / cellSize) - 1) * cellSize;
-  } else if (yaw >= 67.5 - 360+Up && yaw < 112.5-360+Up) {
+  } else if (yaw >= YawRanges[2] && yaw < YawRanges[3]) {
     // Move Right (East)
     type = 4;
     nextX = ((currentX / cellSize) + 1) * cellSize;
     nextY = ((currentY / cellSize)) * cellSize;
-  } else if (yaw >= 112.5-360+Up && yaw < 157.5-360+Up) {
+  } else if (yaw >= YawRanges[3] && yaw < YawRanges[4]) {
     // Move Down-Right (South-East)
     type = 5;
     nextX = ((currentX / cellSize) + 1) * cellSize;
     nextY = ((currentY / cellSize) + 1) * cellSize;
-  } else if (yaw >= 157.5-360+Up && yaw < 202.5-360+Up) {
+  } else if (yaw >= YawRanges[4] && yaw < YawRanges[5]) {
     // Move Down (South)
     type = 6;
     
     nextX = ((currentX / cellSize)) * cellSize;
     nextY = ((currentY / cellSize) + 1) * cellSize;
-  } else if (yaw >= 202.5-360+Up && yaw < 247.5 - 360 +Up) {
+  } else if (yaw >= YawRanges[5] && yaw < YawRanges[6]) {
     // Move Down-Left (South-West)
     type = 7;
     nextX = ((currentX / cellSize) - 1) * cellSize;
     nextY = ((currentY / cellSize) + 1) * cellSize;
-  } else if (yaw >= 247.5 -360+Up && yaw < 292.5-360+Up) {
+  } else if (yaw >= YawRanges[6] && yaw < YawRanges[7]) {
     // Move Left (West)
     type = 8;
     nextX = ((currentX / cellSize) - 1) * cellSize;
     nextY = ((currentY / cellSize)) * cellSize;
-  } else if (yaw >= 292.5-360+Up && yaw < 337.5-360 + Up) {
+  } else if (yaw >= YawRanges[7] && yaw < YawRanges[0]) {
     // Move Up-Left (North-West)
     type = 1;
     nextX = ((currentX / cellSize) - 1) * cellSize;
@@ -235,16 +235,13 @@ boolean CheckStairs(int x, int y, int size)
   }
 }
 
-void StairsHandler(int floor)
+void StairsHandler()
 {
   if(CheckStairs(currentX, currentY, cellSize))
   {
-    if(floor != 1)
-    {
-      if(floor != 2)
-      stepLength = 0.3;
-    }
+    stepLength = 0.297;
   }
+  
 }
 
 
@@ -347,4 +344,33 @@ void DisplayLocation()
   
   fill(0, 0, 0);
   text(CurLoc, 215, 900);
+}
+
+
+float[] generateYawAngles(float startAngle) {
+  // List to store the angles
+  ArrayList<Float> angles = new ArrayList<Float>();
+
+  // Add the starting angle
+  angles.add(startAngle);
+
+  // Generate angles with 22.5-degree increments
+  float currentAngle = startAngle;
+  while (true) {
+    currentAngle = (currentAngle + 22.5) % 360; // Keep the angle within 0-360 range
+    angles.add(currentAngle);
+
+    // Break if we've looped back to the starting angle
+    if (currentAngle == startAngle) {
+      break;
+    }
+  }
+
+  // Convert ArrayList to array and return
+  float[] result = new float[angles.size()];
+  for (int i = 0; i < angles.size(); i++) {
+    result[i] = angles.get(i);
+  }
+
+  return result;
 }
