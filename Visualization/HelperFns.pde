@@ -170,43 +170,43 @@ void mouseClicked()
    1. nextStepDirection(float yaw) */
 
 void nextStepDirection(float yaw) {
-  if ((yaw >= 327.5 && yaw < 360) || (yaw >= 0 && yaw < 12.5)) {
+  if ((yaw >= Up-22.5 && yaw < 360) || (yaw >= 0 && yaw < 22.5-360+Up)) {
     // Move Up (North)
     type = 2;
     nextX = ((currentX / cellSize)) * cellSize;
     nextY = ((currentY / cellSize) - 1) * cellSize;
-  } else if (yaw >= 12.5 && yaw < 57.5) {
+  } else if (yaw >= 22.5-360+Up && yaw < 67.5 - 360+Up) {
     // Move Up-Right (North-East)
     type = 3;
     nextX = ((currentX / cellSize) + 1) * cellSize;
     nextY = ((currentY / cellSize) - 1) * cellSize;
-  } else if (yaw >= 57.5 && yaw < 102.5) {
+  } else if (yaw >= 67.5 - 360+Up && yaw < 112.5-360+Up) {
     // Move Right (East)
     type = 4;
     nextX = ((currentX / cellSize) + 1) * cellSize;
     nextY = ((currentY / cellSize)) * cellSize;
-  } else if (yaw >= 102.5 && yaw < 147.5) {
+  } else if (yaw >= 112.5-360+Up && yaw < 157.5-360+Up) {
     // Move Down-Right (South-East)
     type = 5;
     nextX = ((currentX / cellSize) + 1) * cellSize;
     nextY = ((currentY / cellSize) + 1) * cellSize;
-  } else if (yaw >= 147.5 && yaw < 192.5) {
+  } else if (yaw >= 157.5-360+Up && yaw < 202.5-360+Up) {
     // Move Down (South)
     type = 6;
     
     nextX = ((currentX / cellSize)) * cellSize;
     nextY = ((currentY / cellSize) + 1) * cellSize;
-  } else if (yaw >= 192.5 && yaw < 237.5) {
+  } else if (yaw >= 202.5-360+Up && yaw < 247.5 - 360 +Up) {
     // Move Down-Left (South-West)
     type = 7;
     nextX = ((currentX / cellSize) - 1) * cellSize;
     nextY = ((currentY / cellSize) + 1) * cellSize;
-  } else if (yaw >= 237.5 && yaw < 282.5) {
+  } else if (yaw >= 247.5 -360+Up && yaw < 292.5-360+Up) {
     // Move Left (West)
     type = 8;
     nextX = ((currentX / cellSize) - 1) * cellSize;
     nextY = ((currentY / cellSize)) * cellSize;
-  } else if (yaw >= 282.5 && yaw < 327.5) {
+  } else if (yaw >= 292.5-360+Up && yaw < 337.5-360 + Up) {
     // Move Up-Left (North-West)
     type = 1;
     nextX = ((currentX / cellSize) - 1) * cellSize;

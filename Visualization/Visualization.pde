@@ -44,6 +44,9 @@ int Floor1 = 301;
 int Floor2 = 305;
 int altitude = 0;
 
+// Real World parameters
+float Up = 350;
+
 void setup() {
   size(1400, 1000);
   img = loadImage("Helmholtz_FloorPlan.png");  
@@ -110,7 +113,7 @@ void draw() {
   
   currentFloor = FloorHandler(altitude);
   
-  println(altitude);
+  println(yaw);
   
   
   DisplayFloor();
