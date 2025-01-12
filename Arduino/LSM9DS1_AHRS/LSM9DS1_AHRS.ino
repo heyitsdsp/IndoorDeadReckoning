@@ -2,11 +2,14 @@
 #include "Wire.h"
 #include <math.h>
 #include <Filters.h>
+#include <Arduino_Helpers.h>
 #include <AH/Timing/MillisMicrosTimer.hpp>
 #include <Filters/Butterworth.hpp>
 
 #include <Adafruit_Sensor.h>
 #include "Adafruit_BMP3XX.h"
+
+#include <ArduinoBLE.h>
 
 #define SEALEVELPRESSURE_HPA (1013.25)
 
@@ -66,6 +69,10 @@ float steplength = 0.0f;
 Timer<micros> timer = std::round(1e6 / fs);
 auto filter = butter<2>(fn);
 
+BLEService dataService("e93df100-b754-4fda-adf3-5ca2ea89bde3"); // Bluetooth® Low Energy Service
+
+BLEStringCharacteristic dataCharacteristic("e93df101-b754-4fda-adf3-5ca2ea89bde3", BLERead | BLENotify, 64);
+
 void setup()
 {
   Wire1.begin();
@@ -89,119 +96,141 @@ void setup()
   bmp.setOutputDataRate(BMP3_ODR_50_HZ);
 
   initLSM9DS1();
+  BLE_initialization();
 }
 
 void loop()
 {
-  step = false;
 
-    if (readByte(LSM9DS1XG_ADDRESS, LSM9DS1XG_STATUS_REG) & 0x01) {  // check if new accel data is ready  
-    readAccelData(accelCount);  // Read the x/y/z adc values
+  // listen for Bluetooth® Low Energy centrals to connect:
+  BLEDevice central = BLE.central();
 
-    // Now we'll calculate the accleration value into actual g's
-    ax = (float)accelCount[0]*aRes - accelBias[0];  // get actual g value, this depends on scale being set
-    ay = (float)accelCount[1]*aRes - accelBias[1];   
-    az = (float)accelCount[2]*aRes - accelBias[2]; 
-  } 
+  // if a central is connected to peripheral:
+  if (central) {
+    Serial.print("Connected to central: ");
+    // print the central's MAC address:
+    Serial.println(central.address());
 
-  if (readByte(LSM9DS1XG_ADDRESS, LSM9DS1XG_STATUS_REG) & 0x02) {  // check if new gyro data is ready  
-    readGyroData(gyroCount);  // Read the x/y/z adc values
-
-    // Calculate the gyro value into actual degrees per second
-    gx = (float)gyroCount[0]*gRes - gyroBias[0];  // get actual gyro value, this depends on scale being set
-    gy = (float)gyroCount[1]*gRes - gyroBias[1];  
-    gz = (float)gyroCount[2]*gRes - gyroBias[2];   
-  }
-
-  if (readByte(LSM9DS1M_ADDRESS, LSM9DS1M_STATUS_REG_M) & 0x08) {  // check if new mag data is ready  
-    readMagData(magCount);  // Read the x/y/z adc values
-
-    // Calculate the magnetometer values in milliGauss
-    // Include factory calibration per data sheet and user environmental corrections
-    mx = (float)magCount[0]*mRes;  //- magBias[0];  // get actual magnetometer value, this depends on scale being set
-    my = (float)magCount[1]*mRes;  //- magBias[1];  
-    mz = (float)magCount[2]*mRes;  //- magBias[2];   
-  }
-
-  Now = micros();
-  deltat = ((Now - lastUpdate)/1000000.0f); // set integration time by time elapsed since last filter update
-  lastUpdate = Now;
-
-  sum += deltat; // sum for averaging filter update rate
-  sumCount++;
-
-  MadgwickQuaternionUpdate(ax, ay, az, gx*PI/180.0f, gy*PI/180.0f, gz*PI/180.0f, -mx, my, mz);
-
-  delt_t = millis() - count;
-
-  yaw   = atan2(2.0f * (q[1] * q[2] + q[0] * q[3]), q[0] * q[0] + q[1] * q[1] - q[2] * q[2] - q[3] * q[3]);   
-  pitch = -asin(2.0f * (q[1] * q[3] - q[0] * q[2]));
-  roll  = atan2(2.0f * (q[0] * q[1] + q[2] * q[3]), q[0] * q[0] - q[1] * q[1] - q[2] * q[2] + q[3] * q[3]);
-
-  pitch *= 180.0f / PI;
-  yaw   *= 180.0f / PI; 
-  yaw   -= 2.96f; // Declination at Aachen
-  roll  *= 180.0f / PI;
-  // Convert yaw to normal compass degrees   
-  if (yaw < 0) yaw += 360.0;
-  if (yaw >= 360.0) yaw -= 360.0;
-
-
-  /* ===================================== STEP LENGTH AND DISTANCE ESTIMATION ==================================== */ 
-  if(timer)
-  {
-    Accz = filter(az);
-  }
-
-  if(Accz > threshold_max)
-  {
-    if(Accz >= maxima)
-    {
-      maxima = Accz;
-    }
-    else
-    {
-      local_maxima = maxima;
-      maxima = 1.0f;
-      steps += 1;
-    }
-  }
-
-  if(Accz < threshold_min)
-  {
-    if(Accz <= minima)
-    {
-      minima = Accz;
-    }
-    else
-    {
-      local_minima = minima;
-      minima = 1.5f;
+    // while the central is still connected to peripheral:
+    while (central.connected()) {
       
-      if(! isnan(CalculateStepLength(&local_maxima, &local_minima)))
+      step = false;
+
+      if (readByte(LSM9DS1XG_ADDRESS, LSM9DS1XG_STATUS_REG) & 0x01) {  // check if new accel data is ready  
+      readAccelData(accelCount);  // Read the x/y/z adc values
+
+      // Now we'll calculate the accleration value into actual g's
+      ax = (float)accelCount[0]*aRes - accelBias[0];  // get actual g value, this depends on scale being set
+      ay = (float)accelCount[1]*aRes - accelBias[1];   
+      az = (float)accelCount[2]*aRes - accelBias[2]; 
+    } 
+
+    if (readByte(LSM9DS1XG_ADDRESS, LSM9DS1XG_STATUS_REG) & 0x02) {  // check if new gyro data is ready  
+      readGyroData(gyroCount);  // Read the x/y/z adc values
+
+      // Calculate the gyro value into actual degrees per second
+      gx = (float)gyroCount[0]*gRes - gyroBias[0];  // get actual gyro value, this depends on scale being set
+      gy = (float)gyroCount[1]*gRes - gyroBias[1];  
+      gz = (float)gyroCount[2]*gRes - gyroBias[2];   
+    }
+
+    if (readByte(LSM9DS1M_ADDRESS, LSM9DS1M_STATUS_REG_M) & 0x08) {  // check if new mag data is ready  
+      readMagData(magCount);  // Read the x/y/z adc values
+
+      // Calculate the magnetometer values in milliGauss
+      // Include factory calibration per data sheet and user environmental corrections
+      mx = (float)magCount[0]*mRes;  //- magBias[0];  // get actual magnetometer value, this depends on scale being set
+      my = (float)magCount[1]*mRes;  //- magBias[1];  
+      mz = (float)magCount[2]*mRes;  //- magBias[2];   
+    }
+
+    Now = micros();
+    deltat = ((Now - lastUpdate)/1000000.0f); // set integration time by time elapsed since last filter update
+    lastUpdate = Now;
+
+    sum += deltat; // sum for averaging filter update rate
+    sumCount++;
+
+    MadgwickQuaternionUpdate(ax, ay, az, gx*PI/180.0f, gy*PI/180.0f, gz*PI/180.0f, -mx, my, mz);
+
+    delt_t = millis() - count;
+
+    yaw   = atan2(2.0f * (q[1] * q[2] + q[0] * q[3]), q[0] * q[0] + q[1] * q[1] - q[2] * q[2] - q[3] * q[3]);   
+    pitch = -asin(2.0f * (q[1] * q[3] - q[0] * q[2]));
+    roll  = atan2(2.0f * (q[0] * q[1] + q[2] * q[3]), q[0] * q[0] - q[1] * q[1] - q[2] * q[2] + q[3] * q[3]);
+
+    pitch *= 180.0f / PI;
+    yaw   *= 180.0f / PI; 
+    yaw   -= 2.96f; // Declination at Aachen
+    roll  *= 180.0f / PI;
+    // Convert yaw to normal compass degrees   
+    if (yaw < 0) yaw += 360.0;
+    if (yaw >= 360.0) yaw -= 360.0;
+
+
+    /* ===================================== STEP LENGTH AND DISTANCE ESTIMATION ==================================== */ 
+    if(timer)
+    {
+      Accz = filter(az);
+    }
+
+    if(Accz > threshold_max)
+    {
+      if(Accz >= maxima)
       {
-        step = true;
-        distance += CalculateStepLength(&local_maxima, &local_minima);
-        steplength = CalculateStepLength(&local_maxima, &local_minima);
+        maxima = Accz;
+      }
+      else
+      {
+        local_maxima = maxima;
+        maxima = 1.0f;
+        steps += 1;
       }
     }
+
+    if(Accz < threshold_min)
+    {
+      if(Accz <= minima)
+      {
+        minima = Accz;
+      }
+      else
+      {
+        local_minima = minima;
+        minima = 1.5f;
+        
+        if(! isnan(CalculateStepLength(&local_maxima, &local_minima)))
+        {
+          step = true;
+          distance += CalculateStepLength(&local_maxima, &local_minima);
+          steplength = CalculateStepLength(&local_maxima, &local_minima);
+        }
+      }
+    }
+
+
+    /* ============================================ ALTITUDE ESTIMATION ========================================== */
+    
+    bmp.performReading();
+    float altitude = bmp.readAltitude(SEALEVELPRESSURE_HPA);
+
+
+    /* ============================================ PRINTING OUTPUTS TO SERIAL ====================================== */ 
+    
+    Serial.print(step); Serial.print(", ");
+    Serial.print(yaw); Serial.print(", ");
+    Serial.print(steplength); Serial.print(", ");
+    Serial.println(altitude);
+
+    BLE_update(step + yaw + steplength + altitude);
+
+    delay(50);
+    }
+
+    // when the central disconnects, print it out:
+    Serial.print(F("Disconnected from central: "));
+    Serial.println(central.address());
   }
-
-
-  /* ============================================ ALTITUDE ESTIMATION ========================================== */
-  
-  bmp.performReading();
-  float altitude = bmp.readAltitude(SEALEVELPRESSURE_HPA);
-
-
-  /* ============================================ PRINTING OUTPUTS TO SERIAL ====================================== */ 
-  
-  Serial.print(step); Serial.print(", ");
-  Serial.print(yaw); Serial.print(", ");
-  Serial.print(steplength); Serial.print(", ");
-  Serial.println(altitude);
-
-  delay(50);
 }
 
 float CalculateStepLength(float* loc_max, float* loc_min)
@@ -209,4 +238,43 @@ float CalculateStepLength(float* loc_max, float* loc_min)
   float step_length = WeinbergConstant * sqrt(sqrt(*loc_max - *loc_min));
 
   return step_length;
+}
+
+void BLE_initialization()
+{
+  // BLE begin initialization
+  if (!BLE.begin()) {
+    Serial.println("starting Bluetooth® Low Energy module failed!");
+
+    while (1);
+  }
+
+  BLE.setLocalName("Peripheral Arduino");
+  BLE.setAdvertisedService(dataService);
+
+  // add characteristic to service
+  dataService.addCharacteristic(dataCharacteristic);
+
+  BLE.addService(dataService);
+
+  dataCharacteristic.writeValue("");
+
+  BLE.advertise();
+
+  Serial.println("BLE Peripheral");
+}
+
+void BLE_Update(String data)
+{
+  if (central) {
+
+    // while the central is still connected to peripheral
+    if (central.connected()) {
+      dataCharacteristic.writeValue(data);
+    }
+  }
+  else
+  {
+    Serial.println("No BLE Central connected, data update not possible");
+  }
 }
