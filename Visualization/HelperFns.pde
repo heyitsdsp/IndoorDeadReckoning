@@ -290,14 +290,14 @@ void serialEvent(Serial port) {
         step = values[0].equals("1");               // Convert string to boolean
         yaw = float(values[1]);                     // Convert to float
         stepLength = float(values[2]);              // Convert to float
-        altitude = int(values[3]);                // Convert to float
+        altitude = float(values[3]);                // Convert to float
         
         
         // Debugging output
-        /*println("Step: " + step);
+        println("Step: " + step);
         println("Yaw: " + yaw);
         println("Step Length: " + stepLength);
-        println("Altitude: " + altitude);*/
+        println("pressure: " + altitude);
         
 
       } catch (Exception e) {

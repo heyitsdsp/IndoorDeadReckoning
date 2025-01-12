@@ -40,12 +40,12 @@ int squaresMovedPrev = 0;
 
 // altitude and floor parameters
 int currentFloor = 0;
-int Floor1 = 301;
-int Floor2 = 305;
-int altitude = 0;
+int Floor1 = 292;
+int Floor2 = 296;
+float altitude = 0;
 
 // Real World parameters
-float UpAngle = 350;
+float UpAngle = 345;
 float []Ranges = new float[8];
 
 void setup() {
@@ -56,8 +56,13 @@ void setup() {
   float[] YawRanges = {YawAngles[15], YawAngles[1], YawAngles[3], YawAngles[5], YawAngles[7], YawAngles[9], YawAngles[11], YawAngles[13]};  
   Ranges = YawRanges;
   
-  myPort = new Serial(this, "COM5", 9600);
-  myPort.bufferUntil('\n');
+  for(int i=0; i<YawRanges.length; i++)
+  {
+    println(YawRanges[i]);
+  }
+  
+  //myPort = new Serial(this, "COM5", 9600);
+  //myPort.bufferUntil('\n');
   
 }
 
@@ -118,7 +123,7 @@ void draw() {
   
   currentFloor = FloorHandler(altitude);
   
-  println(yaw);
+  println( ((mouseX/cellSize) * cellSize / 20), ((mouseY/cellSize) * cellSize / 20));
   
   
   DisplayFloor();
