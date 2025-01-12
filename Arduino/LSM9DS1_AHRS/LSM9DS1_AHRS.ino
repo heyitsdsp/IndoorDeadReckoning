@@ -2,7 +2,7 @@
 #include "Wire.h"
 #include <math.h>
 #include <Filters.h>
-#include <Arduino_Helpers.h>
+//#include <Arduino_Helpers.h>
 #include <AH/Timing/MillisMicrosTimer.hpp>
 #include <Filters/Butterworth.hpp>
 
@@ -222,7 +222,7 @@ void loop()
     Serial.print(steplength); Serial.print(", ");
     Serial.println(altitude);
 
-    BLE_update(step + yaw + steplength + altitude);
+    BLE_update(central, (step + yaw + steplength + altitude));
 
     delay(50);
     }
@@ -264,7 +264,7 @@ void BLE_initialization()
   Serial.println("BLE Peripheral");
 }
 
-void BLE_Update(String data)
+void BLE_Update(BLEDevice central, String data)
 {
   if (central) {
 
