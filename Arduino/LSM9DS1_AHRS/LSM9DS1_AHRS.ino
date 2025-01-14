@@ -2,7 +2,7 @@
 #include "Wire.h"
 #include <math.h>
 #include <Filters.h>
-//#include <Arduino_Helpers.h>
+#include <Arduino_Helpers.h>
 #include <AH/Timing/MillisMicrosTimer.hpp>
 #include <Filters/Butterworth.hpp>
 
@@ -71,7 +71,10 @@ auto filter = butter<2>(fn);
 
 BLEService dataService("e93df100-b754-4fda-adf3-5ca2ea89bde3"); // Bluetooth® Low Energy Service
 
-BLEStringCharacteristic dataCharacteristic("e93df101-b754-4fda-adf3-5ca2ea89bde3", BLERead | BLENotify, 64);
+BLECharacteristic dataCharacteristic("e93df101-b754-4fda-adf3-5ca2ea89bde3", BLERead | BLENotify, 64);
+BLECharacteristic dataCharacteristic2("e93df102-b754-4fda-adf3-5ca2ea89bde3", BLERead | BLENotify, 64);
+BLECharacteristic dataCharacteristic3("e93df103-b754-4fda-adf3-5ca2ea89bde3", BLERead | BLENotify, 64);
+BLECharacteristic dataCharacteristic4("e93df104-b754-4fda-adf3-5ca2ea89bde3", BLERead | BLENotify, 64);
 
 void setup()
 {
@@ -222,7 +225,11 @@ void loop()
     Serial.print(steplength); Serial.print(", ");
     Serial.println(altitude);
 
-    BLE_update(central, (step + yaw + steplength + altitude));
+    Serial.println(central.rssi());
+    BLE_Update(central, dataCharacteristic, step);
+    BLE_Update(central, dataCharacteristic2, yaw);
+    BLE_Update(central, dataCharacteristic3, steplength);
+    BLE_Update(central, dataCharacteristic4, altitude);
 
     delay(50);
     }
@@ -264,13 +271,13 @@ void BLE_initialization()
   Serial.println("BLE Peripheral");
 }
 
-void BLE_Update(BLEDevice central, String data)
+void BLE_Update(BLEDevice central, BLECharacteristic dataCharacteristic, float data)
 {
   if (central) {
 
     // while the central is still connected to peripheral
     if (central.connected()) {
-      dataCharacteristic.writeValue(data);
+      dataCharacteristic.writeValue((byte)data);
     }
   }
   else
