@@ -1,6 +1,8 @@
 #include "imu9dof.h"
 #include "Wire.h"
 
+#include <AH/Timing/MillisMicrosTimer.hpp>
+
 // Variables to set sensor scales
 uint8_t Gscale = GFS_245DPS; // gyro full scale
 uint8_t Godr = GODR_238Hz;   // gyro data sample rate
@@ -36,34 +38,34 @@ float roll, pitch, yaw;
 
 void writeByte(uint8_t address, uint8_t subAddress, uint8_t data)
 {
-  Wire1.beginTransmission(address);   
-  Wire1.write(subAddress);           
-  Wire1.write(data);                 
-  Wire1.endTransmission();           
+  Wire.beginTransmission(address);   
+  Wire.write(subAddress);           
+  Wire.write(data);                 
+  Wire.endTransmission();           
 }
 
 uint8_t readByte(uint8_t address, uint8_t subAddress)
 {
   uint8_t data;    
-  Wire1.beginTransmission(address);         
-  Wire1.write(subAddress);                        
-  Wire1.endTransmission(false);               
-  Wire1.requestFrom(address, (size_t) 1);    
-  data = Wire1.read();                      
+  Wire.beginTransmission(address);         
+  Wire.write(subAddress);                        
+  Wire.endTransmission(false);               
+  Wire.requestFrom(address, (size_t) 1);    
+  data = Wire.read();                      
   return data;                             
 }
 
 void readBytes(uint8_t address, uint8_t subAddress, uint8_t count, uint8_t * dest)
 {  
-  Wire1.beginTransmission(address);   // Initialize the Tx buffer
-  Wire1.write(subAddress);            // Put slave register address in Tx buffer
+  Wire.beginTransmission(address);   // Initialize the Tx buffer
+  Wire.write(subAddress);            // Put slave register address in Tx buffer
   //  Wire.endTransmission(I2C_NOSTOP);  // Send the Tx buffer, but send a restart to keep connection alive
-  Wire1.endTransmission(false);       // Send the Tx buffer, but send a restart to keep connection alive
+  Wire.endTransmission(false);       // Send the Tx buffer, but send a restart to keep connection alive
   uint8_t i = 0;
-  Wire1.requestFrom(address, count);  // Read bytes from slave register address 
+  Wire.requestFrom(address, count);  // Read bytes from slave register address 
   //        Wire.requestFrom(address, (size_t) count);  // Read bytes from slave register address 
-  while (Wire1.available()) {
-    dest[i++] = Wire1.read(); }         // Put read results in the Rx buffer
+  while (Wire.available()) {
+    dest[i++] = Wire.read(); }         // Put read results in the Rx buffer
 }
 
 void softResetIMU()
