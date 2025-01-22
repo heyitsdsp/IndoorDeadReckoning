@@ -2,7 +2,7 @@
 #include "Wire.h"
 #include <math.h>
 #include <Filters.h>
-//#include <Arduino_Helpers.h>
+#include <Arduino_Helpers.h>
 #include <AH/Timing/MillisMicrosTimer.hpp>
 #include <Filters/Butterworth.hpp>
 
@@ -73,11 +73,19 @@ auto filter = butter<2>(fn);
 
 BLEService dataService("e93df100-b754-4fda-adf3-5ca2ea89bde3"); // Bluetooth® Low Energy Service
 
-BLEStringCharacteristic dataCharacteristic("e93df101-b754-4fda-adf3-5ca2ea89bde3", BLERead | BLENotify, 64);
+BLECharacteristic dataCharacteristic1("e93df101-b754-4fda-adf3-5ca2ea89bde3", BLERead | BLENotify, 64);
+BLECharacteristic dataCharacteristic2("e93df102-b754-4fda-adf3-5ca2ea89bde3", BLERead | BLENotify, 64);
+BLECharacteristic dataCharacteristic3("e93df103-b754-4fda-adf3-5ca2ea89bde3", BLERead | BLENotify, 64);
+BLECharacteristic dataCharacteristic4("e93df104-b754-4fda-adf3-5ca2ea89bde3", BLERead | BLENotify, 64);
+
+byte step_ble;
+byte yaw_ble;
+byte steplength_ble;
+byte altitude_ble;
 
 void setup()
 {
-  Wire1.begin();
+  Wire.begin();
   Serial.begin(9600);
   softResetIMU();
   getAccelResolution();
@@ -219,14 +227,32 @@ void loop()
 
     /* ============================================ PRINTING OUTPUTS TO SERIAL ====================================== */ 
     
-    Serial.print(step); Serial.print(", ");
+    /*Serial.print(step); Serial.print(", ");
     Serial.print(yaw); Serial.print(", ");
     Serial.print(steplength); Serial.print(", ");
-    Serial.println(altitude);
+    Serial.println(altitude);*/
 
+<<<<<<< HEAD
     dataString = String(step) + "," + String(yaw) + "," + String(steplength) + "," + String(altitude);
 
     BLE_Update(central, dataString);
+=======
+    Serial.println(central.rssi());
+    step_ble = (byte)constrain(step, 0, 255);
+    yaw_ble = (byte)constrain(yaw, 0, 255);
+    steplength_ble = (byte)constrain(steplength, 0, 255);
+    altitude_ble = (byte)constrain(altitude, 0, 255);
+
+    Serial.print(step_ble); Serial.print(", ");
+    Serial.print(yaw_ble); Serial.print(", ");
+    Serial.print(steplength_ble); Serial.print(", ");
+    Serial.println(altitude_ble);
+
+    BLE_Update(central, dataCharacteristic1, step_ble);
+    BLE_Update(central, dataCharacteristic2, yaw_ble);
+    BLE_Update(central, dataCharacteristic3, steplength_ble);
+    BLE_Update(central, dataCharacteristic4, altitude_ble);
+>>>>>>> 1cc1efbb8dba97c49f78ddc97247aeec9df5ee05
 
     delay(50);
     }
@@ -257,18 +283,24 @@ void BLE_initialization()
   BLE.setAdvertisedService(dataService);
 
   // add characteristic to service
-  dataService.addCharacteristic(dataCharacteristic);
+  dataService.addCharacteristic(dataCharacteristic1);
+  dataService.addCharacteristic(dataCharacteristic2);
+  dataService.addCharacteristic(dataCharacteristic3);
+  dataService.addCharacteristic(dataCharacteristic4);
 
   BLE.addService(dataService);
 
-  dataCharacteristic.writeValue("");
+  dataCharacteristic1.writeValue("");
+  dataCharacteristic2.writeValue("");
+  dataCharacteristic3.writeValue("");
+  dataCharacteristic4.writeValue("");
 
   BLE.advertise();
 
   Serial.println("BLE Peripheral");
 }
 
-void BLE_Update(BLEDevice central, String data)
+void BLE_Update(BLEDevice central, BLECharacteristic dataCharacteristic, byte data)
 {
   if (central) {
 
