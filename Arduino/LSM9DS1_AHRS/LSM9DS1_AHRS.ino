@@ -15,6 +15,8 @@
 
 Adafruit_BMP3XX bmp;
 
+String dataString;
+
 float accelBias[3] = {0, 0, 0}, gyroBias[3] = {0, 0, 0},  magBias[3] = {0, 0, 0}; // Offsets for accelerometer, gyroscope and magnetometer
 
 // Variables to set sensor scales
@@ -222,7 +224,9 @@ void loop()
     Serial.print(steplength); Serial.print(", ");
     Serial.println(altitude);
 
-    BLE_update(central, (step + yaw + steplength + altitude));
+    dataString = String(step) + "," + String(yaw) + "," + String(steplength) + "," + String(altitude);
+
+    BLE_Update(central, dataString);
 
     delay(50);
     }
@@ -271,6 +275,7 @@ void BLE_Update(BLEDevice central, String data)
     // while the central is still connected to peripheral
     if (central.connected()) {
       dataCharacteristic.writeValue(data);
+      //Serial.println(dataCharacteristic.value());
     }
   }
   else
