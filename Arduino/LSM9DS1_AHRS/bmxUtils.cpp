@@ -1,6 +1,6 @@
 #include <I2C_8Bit.h>
 #include <Wire.h>
-#include "AccGyrCal.h"
+#include "bmxUtils.h"
 
 void setup_FastOffsetCompensation(bool foc_gyr_en, uint8_t foc_acc_x, uint8_t foc_acc_y, uint8_t foc_acc_z)
 {
@@ -50,4 +50,51 @@ void set_inlineCalibration(bool Value)
     RegVal = RegVal | (0x03 << 6);
     I2C_8Bit_writeToModule(BMX160_ADDR, OFFSET_6, RegVal);
   }
+}
+
+void configure_stepDetection(uint8_t step_val)
+{
+  // step_val is a selector for the sensitivity level
+
+  switch(step_val)
+  {
+    case 0: I2C_8Bit_writeToModule(BMX160_ADDR, STEP_CONF_ADDR0, STEP_MODE_NORM0);
+            I2C_8Bit_writeToModule(BMX160_ADDR, STEP_CONF_ADDR1, STEP_MODE_NORM1);
+            break;
+
+    case 1: I2C_8Bit_writeToModule(BMX160_ADDR, STEP_CONF_ADDR0, STEP_MODE_SENS0);
+            I2C_8Bit_writeToModule(BMX160_ADDR, STEP_CONF_ADDR1, STEP_MODE_SENS1);
+            break; 
+    
+    case 2: I2C_8Bit_writeToModule(BMX160_ADDR, STEP_CONF_ADDR0, STEP_MODE_ROB0);
+            I2C_8Bit_writeToModule(BMX160_ADDR, STEP_CONF_ADDR1, STEP_MODE_ROB1);
+            break;
+    
+    default: I2C_8Bit_writeToModule(BMX160_ADDR, STEP_CONF_ADDR0, STEP_MODE_SENS0);
+             I2C_8Bit_writeToModule(BMX160_ADDR, STEP_CONF_ADDR1, STEP_MODE_SENS1);
+             break;
+  }
+  
+}
+
+void configure_StepInterrupt()
+{
+  // Enable the step_detector interrupt in INT_EN_2
+  I2C_8Bit_writeToModule(BMX160_ADDR, INT_EN_ADDR2, 0x08);
+
+  // Configure the physical interrupt pin 1
+  I2C_8Bit_writeToModule(BMX160_ADDR, INT_OUT_CTRL, 0x09);
+
+  // Latch control - 0x00 (Disable Latch)
+  I2C_8Bit_writeToModule(BMX160_ADDR, INT_LATCH, 0x00);
+
+  // Map the step detector interrupt to Interrupt Pin 1
+  I2C_8Bit_writeToModule(BMX160_ADDR, INT_MAP_ADDR0, 0x00);
+}
+
+uint8_t display_InterruptStatus()
+{
+  uint8_t status = I2C_8Bit_readFromModule(BMX160_ADDR, INT_STATUS_ADDR0);
+
+  return status;
 }

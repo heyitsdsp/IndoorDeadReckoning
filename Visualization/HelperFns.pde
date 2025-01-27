@@ -1,3 +1,4 @@
+
 /* The following function displays the FloorPlan with the grid 
    
    1. drawFloorPlan(grid = true) */
@@ -5,10 +6,6 @@ void drawFloorPlan(boolean grid)
 {
   // Draw the floorplan 
   image(img, 0, 0, width/1.02, height/1.3);
-  
-  /* Set the boolean value in the function parameter to true 
-     to view the forbidden zones (where people cannot be) */
-  //showForbiddenZones(true);
   
   if(grid)
   {
@@ -20,7 +17,7 @@ void drawFloorPlan(boolean grid)
       
         // Draw grid squares
         noFill();  // No fill color
-        stroke(0, 50);  // Light grid lines
+        stroke(0, 30);  // Light grid lines
         rect(x, y, cellSize, cellSize);  // Draw the square
       }
     }
@@ -29,234 +26,21 @@ void drawFloorPlan(boolean grid)
 }
 
 
-/* The following functions are to handle the forbidden zones on the Map
-
-   1. void showForbiddenZones(boolean val)
-   2. boolean isInForbiddenZone(int x, int y, int size)  */
-
-void showForbiddenZones(boolean val)
-{
-  
-  if(val)
-  {
-    noStroke();
-    fill(255, 0, 0, 100);  // Translucent red for forbidden zones
-    rect(0 * cellSize, (rows-5) * cellSize, 68 * cellSize, 5 * cellSize);
-    rect(0 * cellSize, 0 * cellSize, 13 * cellSize, 24 * cellSize);
-    rect(13 * cellSize, 0 * cellSize, (cols-13) * cellSize, 5 * cellSize);
-    rect(28 * cellSize, 5 * cellSize, 15 * cellSize, 19 * cellSize);
-    rect((cols-10) * cellSize, 5 * cellSize, 10 * cellSize, 19 * cellSize);
-    rect((cols-2) * cellSize, 24 * cellSize, 2 * cellSize, 9 * cellSize);
-    
-    rect(13 * cellSize, 19 * cellSize, 4 * cellSize, 5 * cellSize);
-    rect(24 * cellSize, 19 * cellSize, 4 * cellSize, 5 * cellSize);
-    rect(43 * cellSize, 19 * cellSize, 4 * cellSize, 5 * cellSize);
-    rect(54 * cellSize, 19 * cellSize, 4 * cellSize, 5 * cellSize);
-    
-    rect(0 * cellSize, 24 * cellSize, 3 * cellSize,  9* cellSize);
-    rect(3 * cellSize, 24 * cellSize, 4 * cellSize,  1* cellSize);
-    rect(3* cellSize, (rows-8) * cellSize, 3 * cellSize, 3 * cellSize);
-    rect(3* cellSize, (rows-11) * cellSize, 1 * cellSize, 3 *cellSize);
-    rect(4* cellSize, (rows-10) * cellSize, 1 * cellSize, 2 *cellSize);
-    rect(6* cellSize, (rows-7) * cellSize, 1 * cellSize, 2 *cellSize);
-    rect(7* cellSize, (rows-6) * cellSize, 1 * cellSize, 1 *cellSize);
-  }
-}
-
-boolean isInForbiddenZone(int x, int y, int size) {
-  // Forbidden Zone 1
-  if (x >= 0 * size && x < 68 * size && y >= (rows - 5) * size && y < rows * size) {
-    return true;
-  }
-  // Forbidden Zone 2
-  if (x >= 0 * size && x < 13 * size && y >= 0 * size && y < 24 * size) {
-    return true;
-  }
-  // Forbidden Zone 3
-  if (x >= 13 * size && x < cols * size && y >= 0 * size && y < 5 * size) {
-    return true;
-  }
-  // Forbidden Zone 4
-  if (x >= 28 * size && x < 43 * size && y >= 5 * size && y < 24 * size) {
-    return true;
-  }
-  // Forbidden Zone 5
-  if (x >= (cols - 10) * size && x < cols * size && y >= 5 * size && y < 24 * size) {
-    return true;
-  }
-  // Forbidden Zone 6
-  if (x >= (cols - 2) * size && x < cols * size && y >= 24 * size && y < 33 * size) {
-    return true;
-  }
-  // Forbidden Zone 7
-  if (x >= 13 * size && x < 17 * size && y >= 19 * size && y < 24 * size) {
-    return true;
-  }
-  // Forbidden Zone 8
-  if (x >= 24 * size && x < 28 * size && y >= 19 * size && y < 24 * size) {
-    return true;
-  }
-  // Forbidden Zone 9
-  if (x >= 43 * size && x < 47 * size && y >= 19 * size && y < 24 * size) {
-    return true;
-  }
-  // Forbidden Zone 10
-  if (x >= 54 * size && x < 58 * size && y >= 19 * size && y < 24 * size) {
-    return true;
-  }
-  // Forbidden Zone 11
-  if (x >= 0 * size && x < 3 * size && y >= 24 * size && y < 33 * size) {
-    return true;
-  }
-  // Forbidden Zone 12
-  if (x >= 3 * size && x < 7 * size && y >= 24 * size && y < 25 * size) {
-    return true;
-  }
-  // Forbidden Zone 13
-  if (x >= 3 * size && x < 6 * size && y >= (rows - 8) * size && y < (rows - 5) * size) {
-    return true;
-  }
-  // Forbidden Zone 14
-  if (x >= 3 * size && x < 4 * size && y >= (rows - 11) * size && y < (rows - 8) * size) {
-    return true;
-  }
-  // Forbidden Zone 15
-  if (x >= 4 * size && x < 5 * size && y >= (rows - 10) * size && y < (rows - 8) * size) {
-    return true;
-  }
-  // Forbidden Zone 16
-  if (x >= 6 * size && x < 7 * size && y >= (rows - 7) * size && y < (rows - 5) * size) {
-    return true;
-  }
-  // Forbidden Zone 17
-  if (x >= 7 * size && x < 8 * size && y >= (rows - 6) * size && y < (rows - 5) * size) {
-    return true;
-  }
-
-  // Not in any forbidden zone
-  return false;
-}
-
-
-/* The following function utilizes the mouse click to fix a starting position
-   1. mouseClicked() // Default Processing function */
-
-void mouseClicked()
-{
-  if(!ignoreMouseClicks)
-  {
-    startX = (mouseX / cellSize) * cellSize;
-    startY = (mouseY / cellSize) * cellSize;  
-    
-    if(isInForbiddenZone(startX, startY, cellSize))
-    {
-      startX = 0;
-      startY = 0;
-      
-      ignoreMouseClicks = false;
-    }
-    else
-    {
-      currentX = startX;
-      currentY = startY;      
-      ignoreMouseClicks = true;
-    }
-  }
-}
-
-
-
-/* The following function finds out the direction of the next step on the basis of yaw
-   1. nextStepDirection(float yaw) */
-
-void nextStepDirection(float yaw, float[] YawRanges) {
-  if ((yaw >= YawRanges[0] && yaw < 360) || (yaw >= 0 && yaw < YawRanges[1])) {
-    // Move Up (North)
-    type = 2;
-    nextX = ((currentX / cellSize)) * cellSize;
-    nextY = ((currentY / cellSize) - 1) * cellSize;
-  } else if (yaw >= YawRanges[1] && yaw < YawRanges[2]) {
-    // Move Up-Right (North-East)
-    type = 3;
-    nextX = ((currentX / cellSize) + 1) * cellSize;
-    nextY = ((currentY / cellSize) - 1) * cellSize;
-  } else if (yaw >= YawRanges[2] && yaw < YawRanges[3]) {
-    // Move Right (East)
-    type = 4;
-    nextX = ((currentX / cellSize) + 1) * cellSize;
-    nextY = ((currentY / cellSize)) * cellSize;
-  } else if (yaw >= YawRanges[3] && yaw < YawRanges[4]) {
-    // Move Down-Right (South-East)
-    type = 5;
-    nextX = ((currentX / cellSize) + 1) * cellSize;
-    nextY = ((currentY / cellSize) + 1) * cellSize;
-  } else if (yaw >= YawRanges[4] && yaw < YawRanges[5]) {
-    // Move Down (South)
-    type = 6;
-    
-    nextX = ((currentX / cellSize)) * cellSize;
-    nextY = ((currentY / cellSize) + 1) * cellSize;
-  } else if (yaw >= YawRanges[5] && yaw < YawRanges[6]) {
-    // Move Down-Left (South-West)
-    type = 7;
-    nextX = ((currentX / cellSize) - 1) * cellSize;
-    nextY = ((currentY / cellSize) + 1) * cellSize;
-  } else if (yaw >= YawRanges[6] && yaw < YawRanges[7]) {
-    // Move Left (West)
-    type = 8;
-    nextX = ((currentX / cellSize) - 1) * cellSize;
-    nextY = ((currentY / cellSize)) * cellSize;
-  } else if (yaw >= YawRanges[7] && yaw < YawRanges[0]) {
-    // Move Up-Left (North-West)
-    type = 1;
-    nextX = ((currentX / cellSize) - 1) * cellSize;
-    nextY = ((currentY / cellSize) - 1) * cellSize;
-  }
-}
-
-
-
-
-
-/* The following functions checks for stairs (only one zone covered) 
-   
-   1. boolean CheckStairs(int x, int y, int size) 
-   2. void StairsHandler(int x, int y)  */
-   
-boolean CheckStairs(int x, int y, int size)
-{
-  if (x >= 47 * size && x < 52 * size && y >= 20 * size && y < 24 * size)
-  {
-    return true;
-  }
-  else
-  {
-    return false;
-  }
-}
-
-void StairsHandler()
-{
-  if(CheckStairs(currentX, currentY, cellSize))
-  {
-    stepLength = 0.297;
-  }
-  
-}
-
-
 /* The following function handles the floor depending on the altitude
    
-   1. void FloorHandler(float altitude) */
+   1. int FloorHandler() */
    
-int FloorHandler(float alt)
+int FloorHandler()
 {
-  if(alt > (0.98*Floor1) && alt < (0.98 *Floor2))
+
+  float difPres = abs( int(pressure - groundPress) );
+  
+  if(difPres >= 20 && difPres < 65) 
   {
     return 1;
   }
   
-  else if(alt > (0.98*Floor2))
+  else if(difPres >= 65 && difPres < 110)
   {
     return 2;
   }
@@ -265,48 +49,8 @@ int FloorHandler(float alt)
   {
     return 0;
   }
-}
-
-
-
-/* The following function is responsible for taking data from the Serial port
-   
-   1. void SerialEvent(Serial port) */
-
-void serialEvent(Serial port) {
-  // Read the data until a newline character
-  String receivedData = port.readStringUntil('\n');
+     
   
-  if (receivedData != null) {
-    receivedData = trim(receivedData); // Remove extra whitespace or newline
-    
-    // Split the received data by commas
-    String[] values = split(receivedData, ',');
-    
-    // Ensure the correct number of values is received
-    if (values.length == 4) {
-      try {
-        // Parse the values
-        step = values[0].equals("1");               // Convert string to boolean
-        yaw = float(values[1]);                     // Convert to float
-        stepLength = float(values[2]);              // Convert to float
-        altitude = float(values[3]);                // Convert to float
-        
-        
-        // Debugging output
-        println("Step: " + step);
-        println("Yaw: " + yaw);
-        println("Step Length: " + stepLength);
-        println("pressure: " + altitude);
-        
-
-      } catch (Exception e) {
-        println("Error parsing data: " + e.getMessage());
-      }
-    } else {
-      println("Incorrect data format received: " + receivedData);
-    }
-  }
 }
 
 
@@ -347,30 +91,399 @@ void DisplayLocation()
 }
 
 
-float[] generateYawAngles(float startAngle) {
-  // List to store the angles
-  ArrayList<Float> angles = new ArrayList<Float>();
+// Display the grid square that the mouse is currently located in
 
-  // Add the starting angle
-  angles.add(startAngle);
+void getCurrentMouseLocation()
+{
+  //println( (int(mouseX/cellSize)), (int(mouseY/cellSize)));
+  gridx = (int(mouseX/cellSize));
+  gridy = (int(mouseY/cellSize));
+}
 
-  // Generate angles with 22.5-degree increments
-  float currentAngle = startAngle;
+
+void calculateProbabilities(float yawAngle, float sigma, float sigmaDistance, int startx, int starty, int gridsize)
+{  
+  for(int x = startx - gridsize/2, i=0; x < startx + gridsize/2; x++, i++)
+  {
+    for(int y = starty - gridsize/2, j=0; y < starty + gridsize/2; y++, j++)
+    {
+      
+      float dx = x - startx;  // Horizontal offset
+      float dy = y - starty;  // Vertical offset
+      float distance = sqrt(dx*dx + dy*dy);  // Calculate euclidian distance
+      
+      float angle = atan2(dy, dx);  // Angle of cell relative to the center (current position)
+      
+      float angleDiff = normalizeAngle(angle - yawAngle);  // wrap to [0, 2pi] 
+      
+      float distanceProb = exp(-sq(distance) / (2 * sq(sigmaDistance)));  // Distance decay
+      
+      if(abs(angleDiff) > 3*sigma)
+      {
+        probabilities[i][j] = 0;
+      }
+      else
+      {
+        // Assign gaussian probability based on angular difference
+        // The weights are empirically determined. Gaussian probability should have lower priority than distance
+        probabilities[i][j] = 0.25*gaussian(angleDiff, sigma) + 0.75*distanceProb;  
+      }
+      
+      applyWallBlocking(startx, starty, gridsize);
+      
+      probabilities[5][5] = 0;
+
+    }
+  }
+}
+
+float gaussian(float x, float sigma)
+{
+  return (1.0 / (sigma * sqrt(TWO_PI))) * exp(-0.5 * sq(x / sigma));
+}
+
+// Ensure probabilities sum up to 1
+void normalizeProbabilities(int startx, int starty, int gridsize)
+{
+  float sum = 0;
+  for (int x = startx - gridsize/2, i = 0; x < startx + gridsize/2; x++, i++) {
+    for (int y = starty - gridsize/2, j = 0; y < starty + gridsize/2; y++, j++) {
+      sum += probabilities[i][j];
+    }
+  }
+  for (int x = startx - gridsize/2, i=0; x < startx + gridsize/2; x++, i++) {
+    for (int y = starty - gridsize/2, j=0; y < starty + gridsize/2; y++, j++) {
+      probabilities[i][j] /= sum;
+    }
+  }
+}
+
+void drawProbabilities(int startx, int starty, int gridsize, boolean drawAllowed) {
+  
+  if(drawAllowed)
+  {
+    for (int x = startx - gridsize/2, i=0; x < startx + gridsize/2; x++, i++) {
+    for (int y = starty - gridsize/2, j=0; y < starty + gridsize/2; y++, j++) {
+      float intensity = map(probabilities[i][j], 0, 1, 0, 1200);
+     
+      noStroke();
+      fill(255, 0, 0, intensity);
+      rect(x * cellSize, y * cellSize, cellSize, cellSize);
+      }
+    }
+  }
+}
+
+float normalizeAngle(float angle) {
+  
+  angle = angle + PI/2 - PI/9;    // Aligning magnetic fields to the Map in the special case of Helmholtz 
+  
+  while (angle > PI) angle -= TWO_PI;
+  while (angle < -PI) angle += TWO_PI;
+  return angle;
+}
+
+
+// Function to load the walls 
+void loadWalls(String filePath) {
+  String[] lines = loadStrings(filePath);
+  for (String line : lines) {
+    String[] coords = line.split(",");
+    int x = int(trim(coords[0]));
+    int y = int(trim(coords[1]));
+    walls.put(x + "," + y, true);
+  }
+}
+
+// Function to display the walls
+void displayWalls(HashMap<String, Boolean> walls, int cellSize) {
+  fill(140); // Wall color (gray)
+  noStroke(); // No border for wall cells
+
+  for (String key : walls.keySet()) {
+    String[] coords = key.split(",");
+    int x = int(coords[0]);
+    int y = int(coords[1]);
+
+    // Draw the wall cell
+    rect(x * cellSize, y * cellSize, cellSize, cellSize);
+  }
+}
+
+
+// Use Bresenham's algorithm to check if the ray passes through any wall squares
+boolean isBlocked(int startx, int starty, int targetX, int targetY) {
+  int dx = abs(targetX - startx);
+  int dy = abs(targetY - starty);
+  int sx = (startx < targetX) ? 1 : -1;
+  int sy = (starty < targetY) ? 1 : -1;
+
+  int err = dx - dy;
+
+  int x = startx;
+  int y = starty;
+
   while (true) {
-    currentAngle = (currentAngle + 22.5) % 360; // Keep the angle within 0-360 range
-    angles.add(currentAngle);
+    // Check if current square is a wall
+    if (walls.containsKey(x + "," + y)) {
+      return true; // Ray is blocked
+    }
 
-    // Break if we've looped back to the starting angle
-    if (currentAngle == startAngle) {
+    // Reached the target square
+    if (x == targetX && y == targetY) {
       break;
+    }
+
+    int e2 = 2 * err;
+
+    if (e2 > -dy) {
+      err -= dy;
+      x += sx;
+    }
+
+    if (e2 < dx) {
+      err += dx;
+      y += sy;
     }
   }
 
-  // Convert ArrayList to array and return
-  float[] result = new float[angles.size()];
-  for (int i = 0; i < angles.size(); i++) {
-    result[i] = angles.get(i);
+  return false; // No wall blocks the ray
+}
+
+void applyWallBlocking(int startx, int starty, int gridSize) {
+  for (int x = startx - gridSize / 2, i = 0; x < startx + gridSize / 2; x++, i++) {
+    for (int y = starty - gridSize / 2, j = 0; y < starty + gridSize / 2; y++, j++) {
+
+      if (probabilities[i][j] > 0) {
+        if (isBlocked(startx, starty, x, y)) {
+          probabilities[i][j] = 0;
+        }
+      }
+      
+    }
+  }
+}
+
+// Step algorithm (probabilities is the 10x10 mini-grid and the goal of the function is to find the highest probability square inside the step radius)
+PVector findHighestProbabilityInCircle(float[][] probabilities, int centerX, int centerY, float stepLength, int gridSize) {
+  float squareSize = 10.0 / 17.0; // Real-world meters per square
+  int maxRadius = ceil(stepLength / squareSize); // Convert step length to grid radius
+
+  float maxProbability = -1; // Start with an invalid probability
+  PVector bestSquare = new PVector(centerX, centerY); // Default to the current position
+
+  // Iterate over all squares in a circular range
+  for (int dx = -maxRadius; dx <= maxRadius; dx++) {
+    for (int dy = -maxRadius; dy <= maxRadius; dy++) {
+      int x = centerX + dx;
+      int y = centerY + dy;
+
+      // Check if (x, y) is within the grid bounds
+      int localX = dx + gridSize / 2;
+      int localY = dy + gridSize / 2;
+      
+      
+      if (localX >= 0 && localX < probabilities.length && localY >= 0 && localY < probabilities[0].length) {
+        // Check if (x, y) lies within the circular radius
+        float distance = sqrt(dx * dx + dy * dy);
+        if (distance <= maxRadius) {
+          // Compare probabilities to find the highest
+          if (probabilities[localX][localY] > maxProbability) {
+            maxProbability = probabilities[localX][localY];
+            bestSquare.set(x, y); // Update the best square
+          }
+        }
+      }
+    }
   }
 
-  return result;
+  return bestSquare; // Return the best square
+}
+
+
+
+void updatePositionWithProbabilities(float[][] probabilities, int centerX, int centerY, float stepLength) {
+  
+  PVector bestSquare = findHighestProbabilityInCircle(probabilities, centerX, centerY, stepLength, gridsize);
+  
+  currentX = int(bestSquare.x);
+  currentY = int(bestSquare.y);
+}
+
+void drawCurrentPosition(int currentX, int currentY, int cellSize, boolean drawAllowed)
+{ 
+  if(drawAllowed)
+  {
+    fill(0, 0, 0);
+    noStroke();
+    rect(currentX * cellSize, currentY * cellSize, cellSize, cellSize);
+  }
+}
+
+void updateProbabilitiesForWalls(float[][] probabilities, HashMap<String, Boolean> walls) {
+  for (int x = 0; x < probabilities.length; x++) {
+    for (int y = 0; y < probabilities[0].length; y++) {
+      // Check if the current square is a wall
+      String key = x + "," + y;
+      if (walls.containsKey(key)) {
+        probabilities[x][y] = 0; // Set probability to 0 for walls
+      }
+    }
+  }
+}
+
+
+void displayStartPosition(int startx, int starty)
+{
+  fill(0, 0, 100);
+  noStroke();
+  rect(startx *cellSize, starty *cellSize, cellSize, cellSize);  
+}
+
+
+void CorrectError(int x, int y, int cellsize)
+{
+  int counter = 0;
+  
+  for(int i = 0; i<cellsize; i++)
+  {
+    for(int j=0; j<cellsize; j++)
+    {
+      if(Float.isNaN(probabilities[i][j]))
+      {
+        counter++;
+      }
+    }
+  }
+  
+  // When we are stuck in x or y direction, we jump back to a fixed line along the axis of the corridor
+  
+  // Zone 1  
+  if(counter == 100 && x > 24 && x < 57 && y > 9 && y < 53)
+  {
+    currentX = 37;
+  }
+  
+  // Zone 2
+  if(counter == 100 && x > 3 && x < 135 && y > 46 && y < 67)
+  {
+    currentY = 56;
+  }
+  
+  // Zone 3
+  if(counter == 100 && x > 84 && x < 117 && y > 9 && y < 53)
+  {
+    currentX = 105;
+  }
+}
+
+
+void serialReadThread() {
+  while (true) { // Infinite loop to continuously read data
+    if (myPort.available() > 0) {
+      String receivedData = myPort.readStringUntil('\n');
+      if (receivedData != null) {
+        receivedData = trim(receivedData); // Remove extra whitespace or newline
+
+        // Split the received data by commas
+        String[] values = split(receivedData, ',');
+
+        // Ensure the correct number of values is received
+        if (values.length == 5) {
+          try {
+            synchronized (this) { // Ensure thread-safe access
+              stepTaken = (values[0]).equals("1"); // Convert string to boolean
+              yaw = float(values[1]);             // Convert to float
+              stepLength = float(values[2]);      // Convert to float
+              pressure = float(values[3]);        // Convert to float
+              RSSI = (float(values[4]));
+              
+              newDataAvailable = true;            // Signal new data availability
+              
+              if(!firstPressTaken)
+              {    
+                groundPress = pressure;
+                
+                firstPressTaken = true;
+              }
+            }
+          } catch (Exception e) {
+            println("Error parsing data: " + e.getMessage());
+          }
+        } else {
+          println("Incorrect data format received: " + receivedData);
+        }
+      }
+    }
+    delay(10); // Add a slight delay to prevent CPU overload
+  }
+}
+
+void HeatMapButtonHandler()
+{
+  int colorChanger;
+  
+  if(mouseX > 1060 &&  mouseX < (1060 +250) && mouseY > 790 && mouseY < (790 + 60))
+  {
+    colorChanger = 255;
+    overHeatMapButton = true;
+  }
+  else
+  {
+    colorChanger = 204;
+    overHeatMapButton = false;
+  }
+  
+  
+  fill(colorChanger, colorChanger, colorChanger);
+  stroke(0,0,0);
+  rect(1060, 790, 250,60);
+  
+  textSize(30);
+  fill(0, 0, 128);
+  text("Display HeatMap", 1080, 830);
+}
+
+void drawApproximateLocation()
+{
+  // Disable drawing the Approximate Blue Circle if Test Mode is Enabled for better visibility
+  if(!EnableTestMode)
+  {
+    if(millis() - displayTime >= 5000)
+    {
+      drawAllowed = false;
+      
+      noStroke();
+      fill(0, 0, 255, 150);
+      circle(currentX * cellSize, currentY * cellSize, 50);
+    }
+  }
+}
+
+void updateHeatMap(float[][] probabilities, int currentx, int currenty, int gridsize)
+{
+  for(int i = 0; i < gridsize; i++)
+  {
+    for(int j = 0; j < gridsize; j++)
+    {
+      if(HeatMap[currentx - gridsize + i][currenty - gridsize + j] <= probabilities[i][j])
+      {
+        HeatMap[currentx - gridsize + i][currenty - gridsize + j] = probabilities[i][j];     
+      }
+        
+    }
+  } 
+}
+
+void drawHeatMap()
+{
+  for(int i = 0; i < cols; i++)
+  {
+    for(int j = 0; j < rows; j++)
+    {
+      noStroke();
+      fill(255, 0, 0, map(HeatMap[i][j], 0, 1, 0, 1200));
+      rect((i+5) * cellSize, (j+5) *cellSize, cellSize, cellSize);
+    }
+  }
 }

@@ -1,21 +1,21 @@
 #include "imu9dof.h"
 #include "Wire.h"
+
 #include <math.h>
 #include <Filters.h>
-#include <Arduino_Helpers.h>
 #include <AH/Timing/MillisMicrosTimer.hpp>
 #include <Filters/Butterworth.hpp>
+
+#include <DFRobot_BMX160.h>
+#include "bmxUtils.h"
 
 #include <Adafruit_Sensor.h>
 #include "Adafruit_BMP3XX.h"
 
 #include <ArduinoBLE.h>
 
+#define SAMPLE_RATE (119.0f)
 #define SEALEVELPRESSURE_HPA (1013.25)
-
-Adafruit_BMP3XX bmp;
-
-String dataString;
 
 float accelBias[3] = {0, 0, 0}, gyroBias[3] = {0, 0, 0},  magBias[3] = {0, 0, 0}; // Offsets for accelerometer, gyroscope and magnetometer
 
@@ -27,9 +27,6 @@ extern int16_t accelCount[3], gyroCount[3], magCount[3];  // Stores the 16-bit s
 extern float   temperature;    //Gyroscope temperature
 extern float ax, ay, az, gx, gy, gz, mx, my, mz; // variables to hold latest sensor data values 
 extern float q[4];    // vector to hold quaternion
-float q_inverse[4];
-float q_magRot[4];
-float magRot[4];
 
 // Variables for sensor fusion
 extern float GyroMeasError;      // gyroscope measurement error in rads/s (start at 40 deg/s)
@@ -43,275 +40,255 @@ extern float deltat, sum;
 extern uint32_t lastUpdate, firstUpdate;         
 extern uint32_t Now;
 
-// Tilt compensation variables
-float Xm, Ym;
-
 // Output variables
 extern float roll, pitch, yaw;
 
-// Variables for filtering
-const double fc = 19;
-const double fs = 119.00;
-const double fn = fc / (fs/2);
-uint16_t steps = 0;
+// Variables for step detection and step length estimation
+double distance = 0.0f, WeinbergConstant = 0.738894f;
+float steplength = 0.0f;
 bool step = false;
-
-// Variables for step counting
-float Accz;               // Filtered z axis acceleration
 float maxima = 1.0f;
 float minima = 1.5f;
 float local_maxima;
 float local_minima;
 const float threshold_max = 1.06f;
 const float threshold_min = 0.95f;
+unsigned long previousStepTime = 0, currentStepTime;
+const long debounceInterval = 53;
 
-double distance = 0.0f, WeinbergConstant = 0.738894f;
-float steplength = 0.0f;
-
+// Variables for low-pass filter
+const double fc = 19;
+const double fs = SAMPLE_RATE;
+const double fn = fc / (fs/2);
 Timer<micros> timer = std::round(1e6 / fs);
-auto filter = butter<2>(fn);
+auto filter = butter<4>(fn);
 
-BLEService dataService("e93df100-b754-4fda-adf3-5ca2ea89bde3"); // Bluetooth® Low Energy Service
+// Variables for filtered accelerometer output
+double Accz;
 
-BLECharacteristic dataCharacteristic1("e93df101-b754-4fda-adf3-5ca2ea89bde3", BLERead | BLENotify, 64);
-BLECharacteristic dataCharacteristic2("e93df102-b754-4fda-adf3-5ca2ea89bde3", BLERead | BLENotify, 64);
-BLECharacteristic dataCharacteristic3("e93df103-b754-4fda-adf3-5ca2ea89bde3", BLERead | BLENotify, 64);
-BLECharacteristic dataCharacteristic4("e93df104-b754-4fda-adf3-5ca2ea89bde3", BLERead | BLENotify, 64);
+// Variables for altitude and pressure
+float airPressure;
 
-byte step_ble;
-byte yaw_ble;
-byte steplength_ble;
-byte altitude_ble;
+// Instance of the BMX160 sensor
+DFRobot_BMX160 bmx160;
+
+// Instance of the BMP388 sensor
+Adafruit_BMP3XX bmp;
+
+// Delay variables
+unsigned long previousMillis = 0;        
+const long interval = 1000;  
+
+int RSSI;
 
 void setup()
 {
-  Wire.begin();
-  Serial.begin(9600);
+  Wire1.begin();
+  Serial.begin(115200);
+
+  if(!BLE.begin())
+  {
+    Serial.println("Starting BLE Failed");
+    while(1);
+  }
+
+  BLE.scan();
+
+  // Initialize the BMX sensor and perform inline calibration 
+  if (bmx160.begin() != true){
+    Serial.println("init false");
+    while(1);
+  }
+  bmx160.wakeUp();  // Enable the accelerometer and gyroscope
+
+  // Fast offset compensation (BMX160 Accelerometer and Gyroscope)
+  setup_FastOffsetCompensation(1, 3, 3, 1);
+  start_FastOffsetCompensation();
+  set_inlineCalibration(true);
+
+  // Initialize the BMP388 sensor and set params (According to datasheet)
+  bmp.begin_I2C(0x76);
+  bmp.setTemperatureOversampling(BMP3_OVERSAMPLING_8X);
+  bmp.setPressureOversampling(BMP3_OVERSAMPLING_32X);
+  bmp.setIIRFilterCoeff(BMP3_IIR_FILTER_COEFF_31);
+  bmp.setOutputDataRate(BMP3_ODR_200_HZ);
+
+  // Initialize the LSM9DS1 sensor and perform calibration
   softResetIMU();
   getAccelResolution();
   getGyroResolution();
   getMagResolution();
   selftestLSM9DS1();
-  accelgyrocalLSM9DS1(gyroBias, accelBias);
-  magcalLSM9DS1(magBias);
-
-  delay(3000);
-
-  bmp.begin_I2C(0x76);
-
-  // Set up oversampling and filter initialization
-  bmp.setTemperatureOversampling(BMP3_OVERSAMPLING_8X);
-  bmp.setPressureOversampling(BMP3_OVERSAMPLING_4X);
-  bmp.setIIRFilterCoeff(BMP3_IIR_FILTER_COEFF_3);
-  bmp.setOutputDataRate(BMP3_ODR_50_HZ);
-
+  accelgyrocalLSM9DS1(gyroBias, accelBias);   // Make sure the device does not move during this phase
+  magcalLSM9DS1(magBias);                     // Doing the 8 for local magnetic field correction
   initLSM9DS1();
-  BLE_initialization();
+
+  // Configure step detection and interrupt on the BMX160
+  configure_stepDetection(0);     // 0-Normal Mode, 1-Sensitive Mode, 2-Robust Mode
+  configure_StepInterrupt();
+
+  delay(5000);  // Wait for some time
 }
 
 void loop()
 {
+  //================================================================== BLE part ==============================================================================//
+  BLEDevice peripheral = BLE.available();
 
-  // listen for Bluetooth® Low Energy centrals to connect:
-  BLEDevice central = BLE.central();
-
-  // if a central is connected to peripheral:
-  if (central) {
-    Serial.print("Connected to central: ");
-    // print the central's MAC address:
-    Serial.println(central.address());
-
-    // while the central is still connected to peripheral:
-    while (central.connected()) {
-      
-      step = false;
-
-      if (readByte(LSM9DS1XG_ADDRESS, LSM9DS1XG_STATUS_REG) & 0x01) {  // check if new accel data is ready  
-      readAccelData(accelCount);  // Read the x/y/z adc values
-
-      // Now we'll calculate the accleration value into actual g's
-      ax = (float)accelCount[0]*aRes - accelBias[0];  // get actual g value, this depends on scale being set
-      ay = (float)accelCount[1]*aRes - accelBias[1];   
-      az = (float)accelCount[2]*aRes - accelBias[2]; 
-    } 
-
-    if (readByte(LSM9DS1XG_ADDRESS, LSM9DS1XG_STATUS_REG) & 0x02) {  // check if new gyro data is ready  
-      readGyroData(gyroCount);  // Read the x/y/z adc values
-
-      // Calculate the gyro value into actual degrees per second
-      gx = (float)gyroCount[0]*gRes - gyroBias[0];  // get actual gyro value, this depends on scale being set
-      gy = (float)gyroCount[1]*gRes - gyroBias[1];  
-      gz = (float)gyroCount[2]*gRes - gyroBias[2];   
-    }
-
-    if (readByte(LSM9DS1M_ADDRESS, LSM9DS1M_STATUS_REG_M) & 0x08) {  // check if new mag data is ready  
-      readMagData(magCount);  // Read the x/y/z adc values
-
-      // Calculate the magnetometer values in milliGauss
-      // Include factory calibration per data sheet and user environmental corrections
-      mx = (float)magCount[0]*mRes;  //- magBias[0];  // get actual magnetometer value, this depends on scale being set
-      my = (float)magCount[1]*mRes;  //- magBias[1];  
-      mz = (float)magCount[2]*mRes;  //- magBias[2];   
-    }
-
-    Now = micros();
-    deltat = ((Now - lastUpdate)/1000000.0f); // set integration time by time elapsed since last filter update
-    lastUpdate = Now;
-
-    sum += deltat; // sum for averaging filter update rate
-    sumCount++;
-
-    MadgwickQuaternionUpdate(ax, ay, az, gx*PI/180.0f, gy*PI/180.0f, gz*PI/180.0f, -mx, my, mz);
-
-    delt_t = millis() - count;
-
-    yaw   = atan2(2.0f * (q[1] * q[2] + q[0] * q[3]), q[0] * q[0] + q[1] * q[1] - q[2] * q[2] - q[3] * q[3]);   
-    pitch = -asin(2.0f * (q[1] * q[3] - q[0] * q[2]));
-    roll  = atan2(2.0f * (q[0] * q[1] + q[2] * q[3]), q[0] * q[0] - q[1] * q[1] - q[2] * q[2] + q[3] * q[3]);
-
-    pitch *= 180.0f / PI;
-    yaw   *= 180.0f / PI; 
-    yaw   -= 2.96f; // Declination at Aachen
-    roll  *= 180.0f / PI;
-    // Convert yaw to normal compass degrees   
-    if (yaw < 0) yaw += 360.0;
-    if (yaw >= 360.0) yaw -= 360.0;
-
-
-    /* ===================================== STEP LENGTH AND DISTANCE ESTIMATION ==================================== */ 
-    if(timer)
+  if(peripheral)
+  {
+    if(peripheral.localName() == "Nano33IoT")
     {
-      Accz = filter(az);
+      RSSI = peripheral.rssi();
     }
-
-    if(Accz > threshold_max)
-    {
-      if(Accz >= maxima)
-      {
-        maxima = Accz;
-      }
-      else
-      {
-        local_maxima = maxima;
-        maxima = 1.0f;
-        steps += 1;
-      }
-    }
-
-    if(Accz < threshold_min)
-    {
-      if(Accz <= minima)
-      {
-        minima = Accz;
-      }
-      else
-      {
-        local_minima = minima;
-        minima = 1.5f;
-        
-        if(! isnan(CalculateStepLength(&local_maxima, &local_minima)))
-        {
-          step = true;
-          distance += CalculateStepLength(&local_maxima, &local_minima);
-          steplength = CalculateStepLength(&local_maxima, &local_minima);
-        }
-      }
-    }
-
-
-    /* ============================================ ALTITUDE ESTIMATION ========================================== */
-    
-    bmp.performReading();
-    float altitude = bmp.readAltitude(SEALEVELPRESSURE_HPA);
-
-
-    /* ============================================ PRINTING OUTPUTS TO SERIAL ====================================== */ 
-    
-    /*Serial.print(step); Serial.print(", ");
-    Serial.print(yaw); Serial.print(", ");
-    Serial.print(steplength); Serial.print(", ");
-    Serial.println(altitude);*/
-
-<<<<<<< HEAD
-    dataString = String(step) + "," + String(yaw) + "," + String(steplength) + "," + String(altitude);
-
-    BLE_Update(central, dataString);
-=======
-    Serial.println(central.rssi());
-    step_ble = (byte)constrain(step, 0, 255);
-    yaw_ble = (byte)constrain(yaw, 0, 255);
-    steplength_ble = (byte)constrain(steplength, 0, 255);
-    altitude_ble = (byte)constrain(altitude, 0, 255);
-
-    Serial.print(step_ble); Serial.print(", ");
-    Serial.print(yaw_ble); Serial.print(", ");
-    Serial.print(steplength_ble); Serial.print(", ");
-    Serial.println(altitude_ble);
-
-    BLE_Update(central, dataCharacteristic1, step_ble);
-    BLE_Update(central, dataCharacteristic2, yaw_ble);
-    BLE_Update(central, dataCharacteristic3, steplength_ble);
-    BLE_Update(central, dataCharacteristic4, altitude_ble);
->>>>>>> 1cc1efbb8dba97c49f78ddc97247aeec9df5ee05
-
-    delay(50);
-    }
-
-    // when the central disconnects, print it out:
-    Serial.print(F("Disconnected from central: "));
-    Serial.println(central.address());
-  }
-}
-
-float CalculateStepLength(float* loc_max, float* loc_min)
-{
-  float step_length = WeinbergConstant * sqrt(sqrt(*loc_max - *loc_min));
-
-  return step_length;
-}
-
-void BLE_initialization()
-{
-  // BLE begin initialization
-  if (!BLE.begin()) {
-    Serial.println("starting Bluetooth® Low Energy module failed!");
-
-    while (1);
   }
 
-  BLE.setLocalName("Peripheral Arduino");
-  BLE.setAdvertisedService(dataService);
 
-  // add characteristic to service
-  dataService.addCharacteristic(dataCharacteristic1);
-  dataService.addCharacteristic(dataCharacteristic2);
-  dataService.addCharacteristic(dataCharacteristic3);
-  dataService.addCharacteristic(dataCharacteristic4);
 
-  BLE.addService(dataService);
+  if (readByte(LSM9DS1XG_ADDRESS, LSM9DS1XG_STATUS_REG) & 0x01) {  // check if new accel data is ready  
+    readAccelData(accelCount);  // Read the x/y/z adc values
 
-  dataCharacteristic1.writeValue("");
-  dataCharacteristic2.writeValue("");
-  dataCharacteristic3.writeValue("");
-  dataCharacteristic4.writeValue("");
+    // Now we'll calculate the accleration value into actual g's
+    ax = (float)accelCount[0]*aRes - accelBias[0];  // get actual g value, this depends on scale being set
+    ay = (float)accelCount[1]*aRes - accelBias[1];   
+    az = (float)accelCount[2]*aRes - accelBias[2]; 
+  } 
 
-  BLE.advertise();
+  if (readByte(LSM9DS1XG_ADDRESS, LSM9DS1XG_STATUS_REG) & 0x02) {  // check if new gyro data is ready  
+    readGyroData(gyroCount);  // Read the x/y/z adc values
 
-  Serial.println("BLE Peripheral");
-}
+    // Calculate the gyro value into actual degrees per second
+    gx = (float)gyroCount[0]*gRes - gyroBias[0];  // get actual gyro value, this depends on scale being set
+    gy = (float)gyroCount[1]*gRes - gyroBias[1];  
+    gz = (float)gyroCount[2]*gRes - gyroBias[2];   
+  }
 
-void BLE_Update(BLEDevice central, BLECharacteristic dataCharacteristic, byte data)
-{
-  if (central) {
+  if (readByte(LSM9DS1M_ADDRESS, LSM9DS1M_STATUS_REG_M) & 0x08) {  // check if new mag data is ready  
+    readMagData(magCount);  // Read the x/y/z adc values
 
-    // while the central is still connected to peripheral
-    if (central.connected()) {
-      dataCharacteristic.writeValue(data);
-      //Serial.println(dataCharacteristic.value());
+    // Calculate the magnetometer values in milliGauss
+    // Include factory calibration per data sheet and user environmental corrections
+    mx = (float)magCount[0]*mRes; // - magBias[0];  // get actual magnetometer value, this depends on scale being set
+    my = (float)magCount[1]*mRes; // - magBias[1];  
+    mz = (float)magCount[2]*mRes; // - magBias[2];   
+  }
+
+  //============================================= Orientation Estimation using Madgwick Filter ======================================================================//
+
+  Now = micros();
+  deltat = ((Now - lastUpdate)/1000000.0f); // set integration time by time elapsed since last filter update
+  lastUpdate = Now;
+
+  sum += deltat; // sum for averaging filter update rate
+  sumCount++;
+
+  MadgwickQuaternionUpdate(ax, ay, az, gx*PI/180.0f, gy*PI/180.0f, gz*PI/180.0f, -mx, my, mz);
+
+  delt_t = millis() - count;
+
+  yaw   = atan2(2.0f * (q[1] * q[2] + q[0] * q[3]), q[0] * q[0] + q[1] * q[1] - q[2] * q[2] - q[3] * q[3]);   
+  pitch = -asin(2.0f * (q[1] * q[3] - q[0] * q[2]));
+  roll  = atan2(2.0f * (q[0] * q[1] + q[2] * q[3]), q[0] * q[0] - q[1] * q[1] - q[2] * q[2] + q[3] * q[3]);
+  pitch *= 180.0f / PI;
+  yaw   *= 180.0f / PI; 
+  yaw   -= 2.96f; // Declination at Aachen
+  roll  *= 180.0f / PI;
+  // Convert yaw to normal compass degrees   
+  if (yaw < 0) yaw += 360.0;
+  if (yaw >= 360.0) yaw -= 360.0;
+
+
+  //==================================================== Step length estimation and step detection =================================================================//
+
+  // Low pass butterworth filter (fc = 19Hz)
+  if(timer)
+  {
+    Accz = filter(az);
+  }
+
+  // Finding local maxima and minima of the vertical acceleration for step-length estimation
+  // Set thresholds according to person's build
+  if(Accz > threshold_max)
+  {
+    if(Accz >= maxima)
+    {
+      maxima = Accz;
     }
+    else
+    {
+      local_maxima = maxima;
+      maxima = 1.0f;
+    }
+  }
+
+  if(Accz < threshold_min)
+  {
+    if(Accz <= minima)
+    {
+      minima = Accz;
+    }
+    else
+    {
+      local_minima = minima;
+      minima = 1.5f;
+    }
+  }
+
+  currentStepTime = millis();
+
+  // Check for step (debouncing - wait after first step detected for 62 ms and discard the step detector output)
+  if((display_InterruptStatus() & 0x01 == 0x01) && (currentStepTime - previousStepTime > debounceInterval))
+  {
+    previousStepTime = currentStepTime;
+
+    step = true;
+    steplength = CalculateStepLength();
   }
   else
   {
-    Serial.println("No BLE Central connected, data update not possible");
+    step = false;
   }
+
+
+  // =================================================================== Estimate Altitude and air pressure ============================================================== //
+  
+  // Poll this once every 1 seconds to avoid blocking for the yaw algorithm
+  unsigned long currentMillis = millis();
+
+  if(currentMillis - previousMillis >= interval)
+  {
+    previousMillis = currentMillis;
+
+    airPressure = bmp.readPressure();
+  }
+
+
+  // =================================================================== Printing area ====================================================================================//
+
+  // Print out all data - to send to a different device
+  
+  if(step)
+  { Serial.print(step); Serial.print(", ");
+    Serial.print(radians(yaw));  Serial.print(", ");
+    Serial.print(steplength); Serial.print(", ");
+    Serial.print(airPressure); Serial.print(", ");
+    Serial.println(RSSI);
+  } 
+
+  /*
+  Serial.print(step); Serial.print(", ");
+  Serial.print(radians(yaw));  Serial.print(", ");
+  Serial.print(steplength); Serial.print(", ");
+  Serial.println(airPressure);
+  */
+
+  // Stop and reinitate scan to restart communication when in vicinity of Peripheral
+  BLE.stopScan();
+  BLE.scan();
+
+}
+
+float CalculateStepLength()
+{
+  return (WeinbergConstant * sqrt(sqrt(local_maxima - local_minima)));
 }

@@ -1,8 +1,6 @@
 #include "imu9dof.h"
 #include "Wire.h"
 
-#include <AH/Timing/MillisMicrosTimer.hpp>
-
 // Variables to set sensor scales
 uint8_t Gscale = GFS_245DPS; // gyro full scale
 uint8_t Godr = GODR_238Hz;   // gyro data sample rate
@@ -24,7 +22,7 @@ float q[4] = {1.0f, 0.0f, 0.0f, 0.0f};    // vector to hold quaternion
 // Variables for sensor fusion
 float GyroMeasError = PI * (40.0f / 180.0f);      // gyroscope measurement error in rads/s (start at 40 deg/s)
 float GyroMeasDrift = PI * (0.0f  / 180.0f);      // gyroscope measurement drift in rad/s/s (start at 0.0 deg/s/s)
-float beta = sqrt(3.0f / 4.0f) * GyroMeasError;   // compute beta
+float beta = 15 * sqrt(3.0f / 4.0f) * GyroMeasError;   // compute beta (increase for more responsiveness, reduce for stability)
 float zeta = sqrt(3.0f / 4.0f) * GyroMeasDrift;   // compute zeta, the other free parameter in the Madgwick scheme usually set to a small or zero value
 
 // Variables for integration
@@ -38,34 +36,34 @@ float roll, pitch, yaw;
 
 void writeByte(uint8_t address, uint8_t subAddress, uint8_t data)
 {
-  Wire.beginTransmission(address);   
-  Wire.write(subAddress);           
-  Wire.write(data);                 
-  Wire.endTransmission();           
+  Wire1.beginTransmission(address);   
+  Wire1.write(subAddress);           
+  Wire1.write(data);                 
+  Wire1.endTransmission();           
 }
 
 uint8_t readByte(uint8_t address, uint8_t subAddress)
 {
   uint8_t data;    
-  Wire.beginTransmission(address);         
-  Wire.write(subAddress);                        
-  Wire.endTransmission(false);               
-  Wire.requestFrom(address, (size_t) 1);    
-  data = Wire.read();                      
+  Wire1.beginTransmission(address);         
+  Wire1.write(subAddress);                        
+  Wire1.endTransmission(false);               
+  Wire1.requestFrom(address, (size_t) 1);    
+  data = Wire1.read();                      
   return data;                             
 }
 
 void readBytes(uint8_t address, uint8_t subAddress, uint8_t count, uint8_t * dest)
 {  
-  Wire.beginTransmission(address);   // Initialize the Tx buffer
-  Wire.write(subAddress);            // Put slave register address in Tx buffer
+  Wire1.beginTransmission(address);   // Initialize the Tx buffer
+  Wire1.write(subAddress);            // Put slave register address in Tx buffer
   //  Wire.endTransmission(I2C_NOSTOP);  // Send the Tx buffer, but send a restart to keep connection alive
-  Wire.endTransmission(false);       // Send the Tx buffer, but send a restart to keep connection alive
+  Wire1.endTransmission(false);       // Send the Tx buffer, but send a restart to keep connection alive
   uint8_t i = 0;
-  Wire.requestFrom(address, count);  // Read bytes from slave register address 
+  Wire1.requestFrom(address, count);  // Read bytes from slave register address 
   //        Wire.requestFrom(address, (size_t) count);  // Read bytes from slave register address 
-  while (Wire.available()) {
-    dest[i++] = Wire.read(); }         // Put read results in the Rx buffer
+  while (Wire1.available()) {
+    dest[i++] = Wire1.read(); }         // Put read results in the Rx buffer
 }
 
 void softResetIMU()

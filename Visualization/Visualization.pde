@@ -2,67 +2,23 @@ import processing.serial.*;
 
 PImage img;
 
-// Serial parameters
-Serial myPort;              // Declare object for the serial port
-String receivedData = "";   // Store incoming data
-
-// Grid parameters
-int cols = 68;
-int rows = 38;
-int cellSize = 20;
-
-// Step parameters
-int currentX = 0;
-int currentY = 0;
-
-int nextX = 0;
-int nextY = 0;
-
-int startX = 0;
-int startY = 0;
-
-boolean inForbiddenZone = false;
-
-float yaw = 0;
-
-boolean step = false;
-float stepLength = 0.8;
-double distance = 0;
-
-boolean ignoreMouseClicks = false;
-
-int type = 0;
-int lastType = 0;
-
-float gridSquareSide = 1.39;  // Change this. It's currently set to 1m for the Side of the square. 
-int squaresMoved = 0;
-int squaresMovedPrev = 0;
-
-// altitude and floor parameters
-int currentFloor = 0;
-int Floor1 = 292;
-int Floor2 = 296;
-float altitude = 0;
-
-// Real World parameters
-float UpAngle = 345;
-float []Ranges = new float[8];
-
 void setup() {
   size(1400, 1000);
   img = loadImage("Helmholtz_FloorPlan.png");  
   
-  float[] YawAngles = generateYawAngles(UpAngle);
-  float[] YawRanges = {YawAngles[15], YawAngles[1], YawAngles[3], YawAngles[5], YawAngles[7], YawAngles[9], YawAngles[11], YawAngles[13]};  
-  Ranges = YawRanges;
+  //Load the walls from walls.txt
+  loadWalls("walls.txt");
   
-  for(int i=0; i<YawRanges.length; i++)
+  // Limit framerate to not overload the Processing Application
+  frameRate(30);
+  
+  // If TestMode is disabled, then take the data from COM Port
+  if(!EnableTestMode)
   {
-    println(YawRanges[i]);
-  }
+    myPort = new Serial(this, "COM5", 115200);
   
-  //myPort = new Serial(this, "COM5", 9600);
-  //myPort.bufferUntil('\n');
+    thread("serialReadThread");
+  }
   
 }
 
@@ -71,104 +27,156 @@ void draw() {
   
   drawFloorPlan(true);
   
-  // Choose starting point
-  if(currentX ==0 && currentY ==0)
+  // Display the Heat Map of probabilities
+  if(displayHeatMap)
   {
+    drawHeatMap();
+  }
+  
+  // When beacon is near, we set the location to the beacon location in the grid (-46 is the threshold)
+  if(RSSI > -46)
+  {
+    currentX = 41;
+    currentY = 15;
+  }
+  
+  
+  // Show the correction zones if needed (displays the rectangles that we consider for error correction)
+  if(ShowCorrectionZones)
+  {  
+    fill(0, 0, 255, 150);
+    rect(24 * cellSize, 9 *cellSize, 34 * cellSize, 45* cellSize);
     
-  }
-  
-  // After starting point has been chosen
-  else
-  {     
-    // Color the starting point blue
-    fill(0, 0, 200);
-    rect(startX, startY, cellSize, cellSize);
-  }
-  
-  nextStepDirection(yaw, Ranges);
-  
-  if(type != lastType)
-  {
-    distance = 0;
+    fill(0, 0, 255, 150);
+    rect(3 * cellSize, 46 *cellSize, 133 * cellSize, 22* cellSize);
     
-    lastType = type;
+    fill(0, 0, 255, 150);
+    rect(84 * cellSize, 9 *cellSize, 34 * cellSize, 45* cellSize); 
   }
-  else
+    
+ 
+  if(startPositionChosen)
   {
-    if(step)
+    //display Start Position
+    displayStartPosition(startX, startY);
+    
+    // Display the walls
+    if(ShowWalls)
     {
-      distance += stepLength;
-      
-      switch(type % 2) {
+      displayWalls(walls, cellSize);
+    }
+    
+    if(newDataAvailable)
+    {
+      synchronized(this)
+      {
         
-        case 0: 
-          squaresMoved = (int) (distance / gridSquareSide);          
-          break;
+        if(stepTaken)
+        {
+          updatePositionWithProbabilities(probabilities, currentX, currentY, stepLength);
           
-        case 1:
-          squaresMoved = (int) (distance / (sqrt(2) * gridSquareSide));    
-          break;
+          CorrectError(currentX, currentY, cellSize);
+          
+          stepTaken = false;
+          
+          drawAllowed = true;
+        }
+        
+    newDataAvailable = false;
+    
+    displayTime = millis();
+    
       }
-      
-      drawNextFrame(squaresMoved);
-      
-      step = false;
-    }
-  }
-  
-  fill(255, 50, 50, 150);
-  rect(currentX, currentY, cellSize, cellSize);
-  
-  StairsHandler(); 
-  
-  currentFloor = FloorHandler(altitude);
-  
-  println( ((mouseX/cellSize) * cellSize / 20), ((mouseY/cellSize) * cellSize / 20));
-  
-  
-  DisplayFloor();
-  DisplayLocation();
-}
-
-
-void drawNextFrame(int squaresMoved)
-{
-  if(squaresMoved - squaresMovedPrev == 1)
-  {
-    // draw next frame
-    if(! isInForbiddenZone(nextX, nextY, cellSize))
-    {
-      currentX = nextX;
-      currentY = nextY;
     }
     
+  // Handle the probability distribution  
+  calculateProbabilities(yaw, sigma, sigmaDistance, currentX, currentY, gridsize);
+  
+  updateProbabilitiesForWalls(probabilities, walls);
+  
+  normalizeProbabilities(currentX, currentY, gridsize);
+  
+  // Draw probabilities and current position
+  drawProbabilities(currentX, currentY, gridsize, drawAllowed);
+  
+  drawCurrentPosition(currentX, currentY, cellSize, drawAllowed);
+  
+  // Handle Floors by factoring in the Pressure
+  currentFloor = FloorHandler();
+  DisplayFloor();
+  
+  // Experimental for GPS integration
+  DisplayLocation();
+  
+  // Click the button in the GUI to show the HeatMap of probabilities
+  HeatMapButtonHandler();
+  
+  // Blue circle after 5 seconds
+  drawApproximateLocation();
+  
+  // Update HeatMap for every step taken
+  updateHeatMap(probabilities, currentX, currentY, gridsize);
   }
   
-  squaresMovedPrev = squaresMoved;
+}
+
+void keyPressed()
+{
+  newDataAvailable = true;
+  
+  if(key == 'w' || key == 's')
+  {
+    // Press "w" to increase yaw angle and "s" to decrease yaw angle
+    if(key == 'w')
+    {
+      yaw = yaw + radians(2.0);
+    }
+    else
+    {
+      yaw = yaw - radians(2.0);
+    }
+    
+    // Wrap the angles from -2pi to 2pi
+    if(yaw >= TWO_PI)
+    {
+      yaw -= TWO_PI;
+    } 
+  }
+
+  // Take steps using the keyboard. Press spacebar to take a step
+  if(key == ' ')
+  {
+    stepTaken = true;
+  }
+  
+  // Demo value of RSSI to recalibrate. Press "r" to set the RSSI value (can be done only once)
+  if(key == 'r')
+  {
+    RSSI = -35;
+  }
   
 }
 
 
-
-/*
-
-// Testbench / Debug mode
-void keyPressed() {
-  if(keyCode == UP)
-  step = true;
-  
-  if (key == 'a') {
-    yaw += 5; // Increment yaw by 5 degrees
-    if (yaw >= 360) {
-      yaw -= 360; // Rollover at 360 degrees
-    }
+// Processing's in-built mouseClick function - to choose the start position and implement the HeatMap button functionality
+void mouseClicked()
+{
+  if(!startPositionChosen)
+  {
+    getCurrentMouseLocation();
+    
+    currentX = gridx;
+    currentY = gridy;
+    
+    startX = currentX;
+    startY = currentY;
+    
+    startPositionChosen = true;
   }
   
-  if (key == 'f'){
-    altitude += 10;
+  if(overHeatMapButton)
+  {
+    startPositionChosen = false;
+    displayHeatMap = true;
   }
-  if (key == 'g'){
-    altitude -= 10;
-  }
-  
-} */
+}
