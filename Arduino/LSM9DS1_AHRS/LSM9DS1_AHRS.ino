@@ -168,9 +168,9 @@ void loop()
 
     // Calculate the magnetometer values in milliGauss
     // Include factory calibration per data sheet and user environmental corrections
-    mx = (float)magCount[0]*mRes; // - magBias[0];  // get actual magnetometer value, this depends on scale being set
-    my = (float)magCount[1]*mRes; // - magBias[1];  
-    mz = (float)magCount[2]*mRes; // - magBias[2];   
+    mx = (float)magCount[0]*mRes - magBias[0];  // get actual magnetometer value, this depends on scale being set
+    my = (float)magCount[1]*mRes - magBias[1];  
+    mz = (float)magCount[2]*mRes - magBias[2];   
   }
 
   //============================================= Orientation Estimation using Madgwick Filter ======================================================================//
